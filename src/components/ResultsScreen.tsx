@@ -1,4 +1,4 @@
-import { CheckCircle2, Scan, Calendar, Pill, User, FileText } from "lucide-react";
+import { CheckCircle2, Scan, Pill, FileText, AlertCircle, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -9,26 +9,22 @@ interface ResultsScreenProps {
 }
 
 const ResultsScreen = ({ onScanAnother, imagePreview }: ResultsScreenProps) => {
-  const mockPrescription = {
-    patientName: "John Smith",
-    prescriptionDate: "March 15, 2024",
-    medications: [
-      {
-        name: "Amoxicillin",
-        dosage: "500mg",
-        frequency: "3 times daily",
-        duration: "7 days",
-        instructions: "Take with food",
-      },
-      {
-        name: "Ibuprofen",
-        dosage: "400mg",
-        frequency: "As needed",
-        duration: "14 days",
-        instructions: "For pain relief",
-      },
-    ],
-  };
+  const medications = [
+    {
+      name: "Amoxicillin",
+      drugClass: "Penicillin Antibiotic",
+      usage: "Treats bacterial infections including respiratory tract infections, urinary tract infections, and skin infections",
+      commonSideEffects: "Nausea, diarrhea, rash",
+      warnings: "Inform your doctor if you have penicillin allergies",
+    },
+    {
+      name: "Ibuprofen",
+      drugClass: "NSAID (Non-Steroidal Anti-Inflammatory Drug)",
+      usage: "Reduces pain, fever, and inflammation. Used for headaches, muscle pain, arthritis, and menstrual cramps",
+      commonSideEffects: "Stomach upset, heartburn, dizziness",
+      warnings: "Take with food to reduce stomach irritation",
+    },
+  ];
 
   return (
     <div className="min-h-screen bg-background p-4 py-8">
@@ -61,56 +57,49 @@ const ResultsScreen = ({ onScanAnother, imagePreview }: ResultsScreenProps) => {
           </Card>
         )}
 
-        <Card className="p-6 shadow-[var(--card-shadow)]">
-          <div className="space-y-4">
-            <div className="flex items-center gap-3 pb-3 border-b border-border">
-              <User className="w-5 h-5 text-primary" />
-              <div>
-                <p className="text-sm text-muted-foreground">Patient Name</p>
-                <p className="font-semibold text-foreground">{mockPrescription.patientName}</p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3 pb-3 border-b border-border">
-              <Calendar className="w-5 h-5 text-primary" />
-              <div>
-                <p className="text-sm text-muted-foreground">Prescription Date</p>
-                <p className="font-semibold text-foreground">{mockPrescription.prescriptionDate}</p>
-              </div>
-            </div>
-          </div>
-        </Card>
 
         <div className="space-y-4">
           <div className="flex items-center gap-2">
             <Pill className="w-5 h-5 text-primary" />
-            <h3 className="text-xl font-bold text-foreground">Medications</h3>
+            <h3 className="text-xl font-bold text-foreground">Detected Medications</h3>
             <Badge className="ml-2 bg-primary text-primary-foreground">
-              {mockPrescription.medications.length} items
+              {medications.length} items
             </Badge>
           </div>
 
-          {mockPrescription.medications.map((med, index) => (
+          {medications.map((med, index) => (
             <Card key={index} className="p-6 shadow-[var(--card-shadow)] hover:shadow-lg transition-shadow">
-              <div className="space-y-3">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <h4 className="text-xl font-bold text-foreground mb-1">{med.name}</h4>
-                    <p className="text-lg text-primary font-semibold">{med.dosage}</p>
-                  </div>
+              <div className="space-y-4">
+                <div>
+                  <h4 className="text-2xl font-bold text-foreground mb-2">{med.name}</h4>
                   <Badge variant="secondary" className="text-sm">
-                    {med.duration}
+                    {med.drugClass}
                   </Badge>
                 </div>
 
-                <div className="grid gap-2 pt-2">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-muted-foreground">Frequency:</span>
-                    <span className="text-sm text-foreground">{med.frequency}</span>
+                <div className="space-y-3 pt-2">
+                  <div className="flex gap-3">
+                    <Info className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-semibold text-foreground mb-1">Usage</p>
+                      <p className="text-sm text-muted-foreground">{med.usage}</p>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-muted-foreground">Instructions:</span>
-                    <span className="text-sm text-foreground">{med.instructions}</span>
+
+                  <div className="flex gap-3">
+                    <AlertCircle className="w-5 h-5 text-muted-foreground flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-semibold text-foreground mb-1">Common Side Effects</p>
+                      <p className="text-sm text-muted-foreground">{med.commonSideEffects}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-3 p-3 bg-accent/10 rounded-lg">
+                    <AlertCircle className="w-5 h-5 text-accent flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-semibold text-accent mb-1">Important</p>
+                      <p className="text-sm text-accent/90">{med.warnings}</p>
+                    </div>
                   </div>
                 </div>
               </div>
