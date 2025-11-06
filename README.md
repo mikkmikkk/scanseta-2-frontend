@@ -58,9 +58,32 @@ When deploying to Vercel, add the environment variable in your project settings:
 1. Go to your Vercel project dashboard
 2. Navigate to Settings > Environment Variables
 3. Add `VITE_API_BASE_URL` with your production backend URL (e.g., `https://your-backend.example.com`)
-4. Redeploy your application
+4. **Important**: Redeploy your application after adding the environment variable
 
 **Note**: The backend API must be running and accessible at the configured URL for the prescription scanner to work.
+
+### Troubleshooting "Cannot connect to server" on Mobile
+
+If the app works on desktop but not on mobile:
+
+1. **Verify environment variable is set in Vercel**:
+   - Check Settings > Environment Variables
+   - Ensure `VITE_API_BASE_URL` is set for all environments
+   - **Redeploy** after adding/updating the variable
+
+2. **Ensure backend uses HTTPS**:
+   - Mobile browsers require HTTPS for API calls
+   - HTTP backends will be blocked by mobile browsers
+
+3. **Check CORS configuration on backend**:
+   - Backend must allow requests from your Vercel domain
+   - Add your Vercel URL to CORS allowed origins
+
+4. **Test backend accessibility**:
+   - Open `https://your-backend-url.com/health` on mobile browser
+   - Should return a JSON response
+
+For detailed troubleshooting, see [DEPLOYMENT.md](./DEPLOYMENT.md)
 
 **Edit a file directly in GitHub**
 

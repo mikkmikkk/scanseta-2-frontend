@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import ProcessingScreen from "@/components/ProcessingScreen";
 import ResultsScreen from "@/components/ResultsScreen";
 import { getHealth, loadModel, PrescriptionResponse } from "@/lib/prescription-api";
+import { config, validateConfig } from "@/lib/config";
 
 type AppState = "upload" | "processing" | "results";
 
@@ -17,9 +18,22 @@ const Index = () => {
   const [isModelLoaded, setIsModelLoaded] = useState<boolean>(false);
   const [isLoadingModel, setIsLoadingModel] = useState<boolean>(false);
   const [isCheckingHealth, setIsCheckingHealth] = useState<boolean>(true);
+  const [configValid, setConfigValid] = useState<boolean>(true);
 
   useEffect(() => {
     const checkHealth = async () => {
+      // First validate configuration
+      const validation = validateConfig();
+      setConfigValid(validation.valid);
+      
+      if (!validation.valid) {
+        validation.errors.forEach(error => {
+          toast.error(error);
+        });
+        setIsCheckingHealth(false);
+        return;
+      }
+
       try {
         const health = await getHealth();
         setIsModelLoaded(health.model_loaded);
@@ -27,7 +41,8 @@ const Index = () => {
           toast.info("Model not loaded. Please load the model to start scanning.");
         }
       } catch (error) {
-        toast.error("Cannot connect to server. Please ensure the backend is running.");
+        const errorMessage = error instanceof Error ? error.message : "Cannot connect to server. Please ensure the backend is running.";
+        toast.error(errorMessage);
         console.error("Health check error:", error);
       } finally {
         setIsCheckingHealth(false);
@@ -113,7 +128,22 @@ const Index = () => {
             </p>
           </div>
 
-          {!isModelLoaded && !isCheckingHealth && (
+          {!configValid && !isCheckingHealth && (
+            <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4 flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-destructive flex-shrink-0 mt-0.5" />
+              <div className="text-left flex-1">
+                <p className="text-sm font-semibold text-destructive mb-1">Configuration Error</p>
+                <p className="text-sm text-destructive/90 mb-2">
+                  Backend API URL is not configured. Please set the <code className="bg-destructive/10 px-1 py-0.5 rounded text-xs">VITE_API_BASE_URL</code> environment variable.
+                </p>
+                <p className="text-xs text-destructive/80">
+                  Current API URL: <code className="bg-destructive/10 px-1 py-0.5 rounded">{config.apiBaseUrl || '(not set)'}</code>
+                </p>
+              </div>
+            </div>
+          )}
+
+          {configValid && !isModelLoaded && !isCheckingHealth && (
             <div className="bg-accent/10 border border-accent/20 rounded-lg p-4 flex items-start gap-3">
               <AlertCircle className="w-5 h-5 text-accent flex-shrink-0 mt-0.5" />
               <div className="text-left flex-1">
@@ -141,19 +171,19 @@ const Index = () => {
           )}
 
           <div className="grid gap-4 pt-8">
-            <label htmlFor="file-upload" className={!isModelLoaded || isCheckingHealth ? "cursor-not-allowed" : "cursor-pointer"}>
+            <label htmlFor="file-upload" className={!isModelLoaded || isCheckingHealth || !configValid ? "cursor-not-allowed" : "cursor-pointer"}>
               <input
                 id="file-upload"
                 type="file"
                 accept="image/*"
                 onChange={handleFileChange}
                 className="hidden"
-                disabled={!isModelLoaded || isCheckingHealth}
+                disabled={!isModelLoaded || isCheckingHealth || !configValid}
               />
               <Button 
                 size="lg" 
                 className="w-full h-14 text-base bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary/80 transition-all shadow-lg"
-                disabled={!isModelLoaded || isCheckingHealth}
+                disabled={!isModelLoaded || isCheckingHealth || !configValid}
                 asChild
               >
                 <span>
@@ -163,7 +193,7 @@ const Index = () => {
               </Button>
             </label>
 
-            <label htmlFor="camera-capture" className={!isModelLoaded || isCheckingHealth ? "cursor-not-allowed" : "cursor-pointer"}>
+            <label htmlFor="camera-capture" className={!isModelLoaded || isCheckingHealth || !configValid ? "cursor-not-allowed" : "cursor-pointer"}>
               <input
                 id="camera-capture"
                 type="file"
@@ -171,13 +201,13 @@ const Index = () => {
                 capture="environment"
                 onChange={handleFileChange}
                 className="hidden"
-                disabled={!isModelLoaded || isCheckingHealth}
+                disabled={!isModelLoaded || isCheckingHealth || !configValid}
               />
               <Button 
                 variant="secondary" 
                 size="lg" 
                 className="w-full h-14 text-base transition-all"
-                disabled={!isModelLoaded || isCheckingHealth}
+                disabled={!isModelLoaded || isCheckingHealth || !configValid}
                 asChild
               >
                 <span>
