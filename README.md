@@ -32,9 +32,35 @@ cd <YOUR_PROJECT_NAME>
 # Step 3: Install the necessary dependencies.
 npm i
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# Step 4: Create a .env.local file with your backend API URL
+echo "VITE_API_BASE_URL=http://127.0.0.1:8080" > .env.local
+
+# Step 5: Start the development server with auto-reloading and an instant preview.
 npm run dev
 ```
+
+## Backend API Configuration
+
+This project requires a FastAPI backend for prescription scanning. Configure the backend URL using the `VITE_API_BASE_URL` environment variable.
+
+### Local Development
+
+Create a `.env.local` file in the project root:
+
+```env
+VITE_API_BASE_URL=http://127.0.0.1:8080
+```
+
+### Production Deployment (Vercel)
+
+When deploying to Vercel, add the environment variable in your project settings:
+
+1. Go to your Vercel project dashboard
+2. Navigate to Settings > Environment Variables
+3. Add `VITE_API_BASE_URL` with your production backend URL (e.g., `https://your-backend.example.com`)
+4. Redeploy your application
+
+**Note**: The backend API must be running and accessible at the configured URL for the prescription scanner to work.
 
 **Edit a file directly in GitHub**
 

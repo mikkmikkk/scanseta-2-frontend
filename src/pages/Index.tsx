@@ -1,19 +1,68 @@
-import { useState } from "react";
-import { Camera, Upload, Scan } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Camera, Upload, Scan, Loader2, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { toast } from "sonner";
 import ProcessingScreen from "@/components/ProcessingScreen";
 import ResultsScreen from "@/components/ResultsScreen";
+import { getHealth, loadModel, PrescriptionResponse } from "@/lib/prescription-api";
 
 type AppState = "upload" | "processing" | "results";
 
 const Index = () => {
   const [appState, setAppState] = useState<AppState>("upload");
   const [imagePreview, setImagePreview] = useState<string>("");
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [scanResults, setScanResults] = useState<PrescriptionResponse | null>(null);
+  const [isModelLoaded, setIsModelLoaded] = useState<boolean>(false);
+  const [isLoadingModel, setIsLoadingModel] = useState<boolean>(false);
+  const [isCheckingHealth, setIsCheckingHealth] = useState<boolean>(true);
+
+  useEffect(() => {
+    const checkHealth = async () => {
+      try {
+        const health = await getHealth();
+        setIsModelLoaded(health.model_loaded);
+        if (!health.model_loaded) {
+          toast.info("Model not loaded. Please load the model to start scanning.");
+        }
+      } catch (error) {
+        toast.error("Cannot connect to server. Please ensure the backend is running.");
+        console.error("Health check error:", error);
+      } finally {
+        setIsCheckingHealth(false);
+      }
+    };
+
+    checkHealth();
+  }, []);
+
+  const handleLoadModel = async () => {
+    setIsLoadingModel(true);
+    try {
+      const result = await loadModel();
+      if (result.success) {
+        setIsModelLoaded(true);
+        toast.success("Model loaded successfully!");
+      } else {
+        toast.error("Failed to load model. Please try again.");
+      }
+    } catch (error) {
+      toast.error("Failed to load model. Please check the backend logs.");
+      console.error("Model load error:", error);
+    } finally {
+      setIsLoadingModel(false);
+    }
+  };
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
+      if (!isModelLoaded) {
+        toast.error("Please load the model first before scanning.");
+        return;
+      }
+      setSelectedFile(file);
       const reader = new FileReader();
       reader.onloadend = () => {
         setImagePreview(reader.result as string);
@@ -23,17 +72,24 @@ const Index = () => {
     }
   };
 
+  const handleScanComplete = (results: PrescriptionResponse) => {
+    setScanResults(results);
+    setAppState("results");
+  };
+
   const handleScanAnother = () => {
     setAppState("upload");
     setImagePreview("");
+    setSelectedFile(null);
+    setScanResults(null);
   };
 
-  if (appState === "processing") {
-    return <ProcessingScreen onComplete={() => setAppState("results")} imagePreview={imagePreview} />;
+  if (appState === "processing" && selectedFile) {
+    return <ProcessingScreen onComplete={handleScanComplete} imagePreview={imagePreview} file={selectedFile} />;
   }
 
-  if (appState === "results") {
-    return <ResultsScreen onScanAnother={handleScanAnother} imagePreview={imagePreview} />;
+  if (appState === "results" && scanResults) {
+    return <ResultsScreen onScanAnother={handleScanAnother} imagePreview={imagePreview} scanResults={scanResults} />;
   }
 
   return (
@@ -41,7 +97,11 @@ const Index = () => {
       <Card className="w-full max-w-2xl p-8 md:p-12 shadow-[var(--card-shadow)]">
         <div className="text-center space-y-6">
           <div className="inline-flex p-4 rounded-2xl bg-gradient-to-br from-primary/10 to-accent/10 mb-4">
-            <Scan className="w-12 h-12 text-primary" />
+            {isCheckingHealth ? (
+              <Loader2 className="w-12 h-12 text-primary animate-spin" />
+            ) : (
+              <Scan className="w-12 h-12 text-primary" />
+            )}
           </div>
           
           <div>
@@ -53,18 +113,47 @@ const Index = () => {
             </p>
           </div>
 
+          {!isModelLoaded && !isCheckingHealth && (
+            <div className="bg-accent/10 border border-accent/20 rounded-lg p-4 flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-accent flex-shrink-0 mt-0.5" />
+              <div className="text-left flex-1">
+                <p className="text-sm font-semibold text-accent mb-1">Model Not Loaded</p>
+                <p className="text-sm text-accent/90 mb-3">
+                  The AI model needs to be loaded before you can scan prescriptions.
+                </p>
+                <Button
+                  onClick={handleLoadModel}
+                  disabled={isLoadingModel}
+                  size="sm"
+                  className="bg-accent hover:bg-accent/90"
+                >
+                  {isLoadingModel ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Loading Model...
+                    </>
+                  ) : (
+                    "Load Model"
+                  )}
+                </Button>
+              </div>
+            </div>
+          )}
+
           <div className="grid gap-4 pt-8">
-            <label htmlFor="file-upload" className="cursor-pointer">
+            <label htmlFor="file-upload" className={!isModelLoaded || isCheckingHealth ? "cursor-not-allowed" : "cursor-pointer"}>
               <input
                 id="file-upload"
                 type="file"
                 accept="image/*"
                 onChange={handleFileChange}
                 className="hidden"
+                disabled={!isModelLoaded || isCheckingHealth}
               />
               <Button 
                 size="lg" 
                 className="w-full h-14 text-base bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary/80 transition-all shadow-lg"
+                disabled={!isModelLoaded || isCheckingHealth}
                 asChild
               >
                 <span>
@@ -74,7 +163,7 @@ const Index = () => {
               </Button>
             </label>
 
-            <label htmlFor="camera-capture" className="cursor-pointer">
+            <label htmlFor="camera-capture" className={!isModelLoaded || isCheckingHealth ? "cursor-not-allowed" : "cursor-pointer"}>
               <input
                 id="camera-capture"
                 type="file"
@@ -82,11 +171,13 @@ const Index = () => {
                 capture="environment"
                 onChange={handleFileChange}
                 className="hidden"
+                disabled={!isModelLoaded || isCheckingHealth}
               />
               <Button 
                 variant="secondary" 
                 size="lg" 
                 className="w-full h-14 text-base transition-all"
+                disabled={!isModelLoaded || isCheckingHealth}
                 asChild
               >
                 <span>

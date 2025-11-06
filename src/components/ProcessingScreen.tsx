@@ -2,51 +2,97 @@ import { useEffect, useState } from "react";
 import { Loader2, FileText, CheckCircle2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import { toast } from "sonner";
+import { scanPrescription, PrescriptionResponse } from "@/lib/prescription-api";
 
 interface ProcessingScreenProps {
-  onComplete: () => void;
+  onComplete: (results: PrescriptionResponse) => void;
   imagePreview: string;
+  file: File;
 }
 
-const ProcessingScreen = ({ onComplete, imagePreview }: ProcessingScreenProps) => {
+const ProcessingScreen = ({ onComplete, imagePreview, file }: ProcessingScreenProps) => {
   const [progress, setProgress] = useState(0);
   const [currentStep, setCurrentStep] = useState(0);
+  const [isProcessing, setIsProcessing] = useState(true);
 
   const steps = [
-    { label: "Analyzing image quality", duration: 800 },
-    { label: "Detecting text regions", duration: 1000 },
-    { label: "Extracting medication names", duration: 1200 },
-    { label: "Validating prescription data", duration: 900 },
+    { label: "Uploading image to server", duration: 500 },
+    { label: "Analyzing image with AI model", duration: 1500 },
+    { label: "Extracting medication information", duration: 1000 },
+    { label: "Validating prescription data", duration: 500 },
   ];
 
   useEffect(() => {
-    let currentProgress = 0;
-    let stepIndex = 0;
-    const totalDuration = steps.reduce((sum, step) => sum + step.duration, 0);
-    const interval = 50;
+    const processScan = async () => {
+      try {
+        // Start progress animation
+        let currentProgress = 0;
+        let stepIndex = 0;
+        const totalDuration = steps.reduce((sum, step) => sum + step.duration, 0);
+        const interval = 50;
 
-    const timer = setInterval(() => {
-      currentProgress += (interval / totalDuration) * 100;
-      
-      if (currentProgress >= 100) {
+        const progressTimer = setInterval(() => {
+          if (!isProcessing) {
+            clearInterval(progressTimer);
+            return;
+          }
+
+          currentProgress += (interval / totalDuration) * 100;
+          
+          if (currentProgress >= 95) {
+            currentProgress = 95; // Cap at 95% until API returns
+          }
+
+          setProgress(currentProgress);
+
+          // Update step based on progress
+          const stepThreshold = ((stepIndex + 1) / steps.length) * 100;
+          if (currentProgress >= stepThreshold && stepIndex < steps.length - 1) {
+            stepIndex++;
+            setCurrentStep(stepIndex);
+          }
+        }, interval);
+
+        // Call the actual API
+        const result = await scanPrescription(file);
+
+        // Complete the progress
+        clearInterval(progressTimer);
         setProgress(100);
-        setTimeout(onComplete, 500);
-        clearInterval(timer);
-        return;
+        setCurrentStep(steps.length - 1);
+        
+        // Show completion briefly before transitioning
+        setTimeout(() => {
+          onComplete(result);
+        }, 500);
+
+      } catch (error) {
+        setIsProcessing(false);
+        const errorMessage = error instanceof Error ? error.message : "Failed to process prescription";
+        
+        // Handle specific error cases
+        if (errorMessage.includes("400") || errorMessage.includes("invalid")) {
+          toast.error("Invalid image file. Please upload a valid prescription image.");
+        } else if (errorMessage.includes("503") || errorMessage.includes("model")) {
+          toast.error("Model not loaded. Please wait and try again.");
+        } else if (errorMessage.includes("500")) {
+          toast.error("Processing failed. Please try again.");
+        } else {
+          toast.error("Cannot connect to server. Please ensure the backend is running.");
+        }
+        
+        console.error("Scan error:", error);
+        
+        // Navigate back after error
+        setTimeout(() => {
+          window.history.back();
+        }, 2000);
       }
+    };
 
-      setProgress(currentProgress);
-
-      // Update step based on progress
-      const stepThreshold = ((stepIndex + 1) / steps.length) * 100;
-      if (currentProgress >= stepThreshold && stepIndex < steps.length - 1) {
-        stepIndex++;
-        setCurrentStep(stepIndex);
-      }
-    }, interval);
-
-    return () => clearInterval(timer);
-  }, [onComplete]);
+    processScan();
+  }, [file, onComplete]);
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
